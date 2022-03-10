@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2017.8.4)  10 MAR 2022 16:48
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/W32TeX) (preloaded format=pdflatex 2017.8.4)  10 MAR 2022 18:15
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2458,7 +2458,16 @@ LaTeX Font Info:    Font shape `T1/LinuxLibertineT-TLF/m/sc' will be
 (Font)              scaled to size 9.0pt on input line 8.
 
 [2.2]
-Overfull \hbox (4.29373pt too wide) in paragraph at lines 130--148
+Overfull \hbox (11.97899pt too wide) in paragraph at lines 86--89
+[][][]\T1/LinuxLibertineT-TLF/m/it/9 (-20) Definition 3.3. []\T1/LinuxLibertine
+T-TLF/m/n/9 (-20) A \T1/LinuxLibertineT-TLF/m/it/9 (-20) one graph \T1/LinuxLib
+ertineT-TLF/m/n/9 (-20) is de-fined as a tu-ple $\OML/nxlmi/m/it/9 G \U/ntxmia/
+m/it/9 = \LMS/ntxsy/m/n/9 ¹\OML/nxlmi/m/it/9 O; ^^M; []; []\LMS/ntxsy/m/n/9 º$\
+T1/LinuxLibertineT-TLF/m/n/9 (-20) ,
+ []
+
+
+Overfull \hbox (4.29373pt too wide) in paragraph at lines 157--175
  [][] 
  []
 
@@ -2532,14 +2541,14 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 250.
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 250.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 250.
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: ECEF41A06FF8A8D728C7A96602E0B7D1;1213.
+(rerunfilecheck)             Checksum: 5A692372DCB59D1663E05DB1DBD98B2B;1481.
  ) 
 Here is how much of TeX's memory you used:
- 55747 strings out of 492990
- 1180163 string characters out of 6136350
+ 55754 strings out of 492990
+ 1180293 string characters out of 6136350
  1479373 words of memory out of 5000000
- 57716 multiletter control sequences out of 15000+600000
- 733489 words of font info for 387 fonts, out of 8000000 for 9000
+ 57718 multiletter control sequences out of 15000+600000
+ 733762 words of font info for 389 fonts, out of 8000000 for 9000
  1302 hyphenation exceptions out of 8191
  62i,15n,96p,10401b,1047s stack positions out of 5000i,500n,10000p,200000b,80000s
 {c:/texlive/2017/texmf-dist/fonts/enc/dvips/libertine/lbtn_naooyc.enc}{c:/tex
@@ -2564,10 +2573,10 @@ c:/texlive/2017/texmf-dist/fonts/type1/public/newtx/rtxmi7.pfb><c:/texlive/2017
 /texmf-dist/fonts/type1/public/txfonts/rtxr.pfb><c:/texlive/2017/texmf-dist/fon
 ts/type1/public/newtx/txsys.pfb><c:/texlive/2017/texmf-dist/fonts/type1/urw/zap
 fding/uzdr.pfb><c:/texlive/2017/texmf-dist/fonts/type1/public/newtx/zxlri.pfb>
-Output written on main.pdf (5 pages, 592222 bytes).
+Output written on main.pdf (5 pages, 594382 bytes).
 PDF statistics:
- 367 PDF objects out of 1000 (max. 8388607)
- 300 compressed objects within 3 object streams
- 70 named destinations out of 1000 (max. 500000)
- 65215 words of extra memory for PDF output out of 74296 (max. 10000000)
+ 373 PDF objects out of 1000 (max. 8388607)
+ 305 compressed objects within 4 object streams
+ 72 named destinations out of 1000 (max. 500000)
+ 65223 words of extra memory for PDF output out of 74296 (max. 10000000)
 

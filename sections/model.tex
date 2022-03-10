@@ -79,6 +79,33 @@ $\textsc{Properties}(\underline{\textsf{object},\textsf{property}},\textsf{value
 where \underline{\textsf{object},\,\textsf{property}} is a primary key of the second relation, with the first relation allowing multiple labels per object.
 %Relation $\textsc{Labels}$ allows multiple labels per object, while relation $\textsc{Properties}$ allows multiple values per object and property.
 
+\subsection{What I think \Data actually is}
+\label{ssec:therealone}
+
+\begin{definition}
+ A \emph{\data} is defined as a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+%    \item $O \subseteq \objs$, $L \subseteq \labels$, $P \subseteq \cprop$ and $V \subseteq \values$ are finite sets of objects, labels, properties and values, respectively;
+	\item $O$ is a finite subset of $\objs$;
+    \item $\gamma: O \rightarrow O \times O$ is a partial function;
+    \item $\lab : O \rightarrow 2^O$ is a function
+    %the labelling
+    assigning a finite set of labels to an object; and
+    \item $\prop : O \times O \rightarrow O$ is a partial function assigning a value to a certain property of an object. 
+    %, to its value.
+\end{itemize}
+Moreover, we assume that for each object $o \in O$, there exists a finite number of properties $p \in O$ such that $\prop(o,p)$ is defined.
+\end{definition}
+
+Here $(O,\gamma)$ is just an ordinary graph, where you can have edges on edges. Namely, $\gamma(e)=(n_1,n_2)$ simply means that $e$ is the edge id of an edge linking $n_1$ and $n_2$. Each object then has labels, properties and values, which can again be objects. The relational representation is:
+
+\begin{center}
+$\textsc{Connections}(\textsf{source},\textsf{target},\underline{\textsf{eid}})$,\\
+$\textsc{Labels}(\textsf{object},\textsf{label})$,\\
+$\textsc{Properties}(\underline{\textsf{object},\textsf{property}},\textsf{value}),$
+\end{center}
+
+with the same caveats as above. Might be a bit too abstract, but it has everything that other models do as well. Storage wise it might be tricky to get fast queries, but conceptually it is the most natural model in my opinion.
 
 \subsection{\Data and other graph models}\label{ssec:whydg}
 
