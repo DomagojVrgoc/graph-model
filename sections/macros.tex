@@ -1,0 +1,181 @@
+\newcommand{\objs}{\mathsf{Obj}}
+\newcommand{\labels}{\mathcal{L}}
+\newcommand{\keys}{\mathcal{K}}
+\newcommand{\cprop}{\mathcal{P}}
+\newcommand{\values}{\mathcal{V}}
+\newcommand{\vars}{\mathsf{Var}}
+\newcommand{\pvars}{\mathsf{PathVar}}
+
+
+\def\ojoin{\setbox0=\hbox{$\Join$}\rule[0.1ex]{.25em}{.6pt}\llap{\rule[1ex]{.25em}{.6pt}}}
+\def\leftouterjoin{\mathbin{\ojoin\mkern-6.6mu\Join}}
+\newcommand{\LOJ}{\mathbin{\leftouterjoin}}
+
+
+%\newcommand{\dom}{\text{dom}}
+\newcommand{\Dom}[1]{\mathsf{dom}(#1)}
+\newcommand{\Var}[1]{\mathsf{var}(#1)}
+\newcommand{\inv}[1]{#1^{-}}
+
+
+\newcommand{\I}{\text{\bf I}}
+\newcommand{\Lit}{{\bf L}}
+\newcommand{\V}{{\bf V}}
+\newcommand{\B}{{\bf B}}
+\newcommand{\N}{{\bf N}}
+
+\newcommand{\map}{\mu}
+\newcommand{\mset}{M}
+\newcommand{\mappings}{\mathcal{M}}
+\newcommand{\sem}[1]{\llbracket #1\rrbracket}
+\newcommand{\semp}[2]{\llbracket #1\rrbracket_{#2}}
+\newcommand{\sempdg}[3]{\llbracket #1\rrbracket^{#3}_{#2}}
+\newcommand{\sempd}[2]{\llbracket #1\rrbracket^{#2}}
+\newcommand{\eval}[2]{\mathsf{Eval}(#1,#2)}
+
+
+\newcommand{\avar}[1]{\mathsf{AVars}(#1)}
+\newcommand{\evar}[1]{\mathsf{EVars}(#1)}
+\newcommand{\qvars}[1]{\mathsf{Vars}(#1)}
+
+\newcommand{\lab}{\texttt{lab}}
+\newcommand{\prop}{\texttt{prop}}
+\newcommand{\simc}{\ensuremath{\mathfrak{s}}}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+
+\newcommand{\dle}[3]{\ensuremath{\texttt{#1} \xrightarrow{\texttt{#2}} \texttt{#3}}}
+
+
+\lstdefinestyle{ttl}
+{	language=SPARQL, 
+	basicstyle=\ttfamily\scriptsize, 
+	captionpos=b, 
+	%frame=single, 
+	showstringspaces=false, 
+	numbers=none, 
+	morekeywords={SIMILARITY, TOP, MINUS, WITHIN, SERVICE, PREFIX, SELF, SELECT, MATCH, WHERE, FILTER}
+}
+
+\lstset{style=ttl}
+
+%\newcommand{\ah}[1]{{\color{blue}\textsc{aidan}: #1}}
+%\newcommand{\dv}[1]{{\color{green}\textsc{domagoj}: #1}}
+
+%Better command environment :)
+\newcommand{\dv}[1]{\todo[inline, color=green!30]{Domagoj: #1}}
+\newcommand{\ma}[1]{\todo[inline, color=orange!40]{Marcelo: #1}}
+\newcommand{\ah}[1]{\todo[inline, color=blue!20]{Aidan: #1}}
+\newcommand{\ra}[1]{\todo[inline, color=yellow!40]{Renzo: #1}}
+\newcommand{\riveros}[1]{\todo[inline, color=red!30]{\textbf{Riveros}: #1}}
+
+\makeatletter
+\newenvironment{customlegend}[1][]{%
+    \begingroup
+    % inits/clears the lists (which might be populated from previous
+    % axes):
+    \pgfplots@init@cleared@structures
+    \pgfplotsset{#1}%
+}{%
+    % draws the legend:
+    \pgfplots@createlegend
+    \endgroup
+}%
+
+\def\addlegendimage{\pgfplots@addlegendimage}
+\makeatother
+
+\newcommand{\AS}{\operatorname{AS}}
+\newcommand{\AAND}{~\operatorname{AND}~}
+\newcommand{\OPT}{~\operatorname{OPT}~}
+\newcommand{\FILTER}{~\operatorname{FILTER}~}
+\newcommand{\SELECT}{\operatorname{SELECT}~}
+\newcommand{\tru}{\operatorname{true}}
+\newcommand{\fal}{\operatorname{false}}
+\newcommand{\err}{\operatorname{error}}
+
+
+\lstdefinelanguage{dql}{
+    keywords = {SELECT,MATCH,WHERE,OPTIONAL,TYPE,AND,OR,ASC,DESC,LIMIT,ORDER,BY}
+}
+
+\lstdefinestyle{dqls}{
+    inputencoding=utf8,
+    basicstyle=\ttfamily\small,
+    language=dql,
+    %columns=fullflexible,
+    basewidth=0.52em, % keep monospace for bold
+    keywordstyle=\textbf,
+    upquote=true,
+    escapechar=`
+}
+
+
+\newcommand{\dqlt}[1]{\texttt{#1}}
+\newcommand{\dqlkw}[1]{\textbf{\dqlt{#1}}}
+
+\lstnewenvironment{dql}[1][]{%
+    \noindent\minipage[b]{\linewidth}%
+    \centering%
+    \tabular{@{}c@{}}%
+    \lstset{style=dqls,#1}
+}{\endtabular\endminipage\vspace{5pt}}
+
+
+
+\usetikzlibrary{arrows,positioning,backgrounds} 
+\tikzset{
+%    rt/.style={
+%		rectangle,
+%		fill = white,
+%		draw=black, 
+%		text centered,
+%		inner sep=0.5ex
+%		},
+%    rtt/.style={ %tighter version
+%    	rt,
+%    	inner sep=0.1ex
+%    	},
+    ert/.style={ %edge box
+     	rt,
+     	dashed
+     	}, 
+%    ertt/.style={ %edge box, tighter
+%        rtt,
+%        dashed
+%        }, 
+%    rect/.style={ % rounded prop graph boxes
+%        rectangle,
+%        fill = white,
+%        rounded corners,
+%        draw=black, 
+%        text centered,
+%        inner sep=0.8ex
+%        },
+%    rectw/.style={
+%        rect,
+%        draw=white
+%        },
+%    erect/.style={ %edge rect, unfortunate name
+%    	rect,
+%    	dashed
+%    	},
+    erectw/.style={ %edge rectw
+     	rectw,
+     	dashed
+     	},
+%    arrout/.style={
+%           ->,
+%           -latex,
+%           },
+%    arrin/.style={
+%           <-,
+%           latex-,
+%           },
+%    arrb/.style={
+%           <->,
+%           >=latex,
+%           }
+}
+
+%\newcommand{\ym}{\ding{51}}%
+%\newcommand{\nm}{\ding{55}}%

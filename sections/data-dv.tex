@@ -1,0 +1,550 @@
+
+
+The \data model of MillenniumDB already subsumes the RDF graph model~\cite{CyganiakWL14}. Recall that an RDF graph is a set of triples of the form $(a,b,c)$. An RDF graph can be visualized as a \textit{directed labeled graph}~\cite{AnglesABHRV17,MendelzonW89}, which is a set of edges of the form \gedge[arrin][0.6cm]{$a$}{$b$}{$c$}, where $a$ is the source node (aka \textit{subject}), $b$ the edge type (aka \textit{predicate}), and $c$ the target node (aka \textit{object}). Alternatively, an RDF graph can be seen as a relation $\textsc{RDFGraph}(\textsf{source},\textsf{type},\textsf{target})$. To show how RDF is modeled in \datas, consider the following edge, claiming that Michelle Bachelet was the president of Chile.%\footnote{For simplicity, we use human-readable nodes and labels, where in practice they will rather be given as machine generated IDs.}
+
+\medskip
+\begin{center}
+\gedge[arrin][2.5cm]{Michelle Bachelet}{position held}{President of Chile}
+\end{center}
+\medskip
+
+\noindent
+We can encode this triple in a \data by storing the tuple \textsf{(Michelle Bachelet, position held, President of Chile, e)} in the \textsf{DomainGraph} relation, where \textsf{e} denotes a unique (potentially auto-generated) edge id, or equivalently stating that:
+$$\gamma(\textsf{e}) = \textsf{(Michelle Bachelet, position held, President of Chile)}.$$
+
+\noindent
+%RDF graphs permit that an edge label can itself be a node, i.e., the source or target of another edge. However, this is handled by the \data model, since it allows the object used in the \textsf{type} position of the \textsf{DomainGraph} relation to again appear in the \textsf{source} position in another tuple. 
+The id of the edge itself is not needed in the RDF data model, but it can be used for modelling RDF-star (RDF*) graphs~\cite{Hartig17,Hartig21} or named graphs based on RDF, as we will discuss in Section~\ref{ssec:whydg}.
+
+%\ah{I am not sure if see the distinction between edge type/edge label/predicate, source/subject, target/object, connection/edge/relation? If there is a distinction, we should make it clear. If there is no distinction, I think we should stick to one preferred nomenclature for the paper (even if diverse nomenclature is used elsewhere or in the implementation). Personally I prefer edge label and edge as they are more widely accepted and more traditional. I am indifferent about source/subject and target/object, but if we go for edge label/type rather than predicate, then source and target might be more consistent. Nodes denote entities and edges encode relations(hips) between entities.}
+
+%\ah{Still working on this section. Will finish tomorrow (Friday).}
+
+Property graphs~\cite{AnglesABHRV17} further allow nodes and edges to be annotated with labels and property--value pairs, as shown in Figure~\ref{fig:pgmb}. Domain graphs can directly capture property graphs, where, for example, the property--value pair $(\textsf{gender},\textsf{"female"})$ on node $n_1$ can be represented by an edge $\gamma(e_3) = (n_1,\textsf{gender},\textsf{female})$, the property--value pair $(\textsf{order},\textsf{"2"})$ on an edge $e_2$ becomes $\gamma(e_4) = (e_2,\textsf{order},\textsf{2})$, the label on $n_1$ becomes $\gamma(e_5) = (n_1,\textsf{label},\textsf{human})$, the label on $e_1$ becomes the type of the edge $\gamma(e_1) = (n_1,\textsf{father},n_2)$, etc.\footnote{To represent edges in property graphs that permit multiple labels, multiple edges with different types can be added (or the labels can be added on the edge ids).} However, given a legacy property graph, there are some potential ``incompatibilities'' with the resulting domain graph; for example, strings like \textsf{"male"}, labels like \textsf{human}, etc., now become nodes in the graph, generating new paths through them that may affect query results.
+
+\begin{figure}
+\begin{tikzpicture}
+%%%%% node n1 
+\node[nrect] (n1) {
+\alt{
+\uri{gender} & = \uri{"female"}\\[-0.7em]
+\uri{children} & = \uri{"3"}\\[-0.7em]
+\uri{first name} & = \uri{"Michelle"}\\[-0.7em]
+\uri{last name} & = \uri{"Bachelet"}\\[-0.2em] %\\[-0.7em]
+%\uri{birth} & = \str{"29 Sept 1951"}
+%\uri{age} & = \str{35 }
+}};
+
+
+%%%%% label of n1
+\node[rt] (ln1) at (n1.north) {$n_1$ $:$ \uri{human}};
+
+
+%%%%% node n2
+\node[rect, right=2.4cm of n1] (n2) {
+\alt{ 
+\uri{gender} & = \uri{"male"}\\[-0.7em]
+\uri{children} & = \uri{"2"}\\[-0.7em]
+\uri{first name} & = \uri{"Alberto"}\\[-0.7em]
+\uri{last name} & = \uri{"Bachelet"}\\[-0.7em]
+%\str{birth} & = \str{"27 April 1923"}\\[-0.7em]
+\uri{death} & = \uri{"12 March 1974"}\\[-0.2em]
+}};
+
+%%%%% label of n2
+\node[rt] (ln2) at (n2.north) {$n_2$ $:$ \uri{human}};
+
+%%%%% edge e1
+\draw[arrout,bend left=7,transform canvas={yshift=0.25cm}] (n1) to 
+node[lab] (le1) {$e_1$ $:$ \uri{father}} 
+(n2);
+
+%%%%% edge e2
+\draw[arrout,bend left=7,transform canvas={yshift=0.27cm}] (n2) to 
+node[lab] (le2) {$e_2$ $:$ \uri{child}}
+(n1);
+
+%%%%% property value of e2
+\node[erect,anchor=south] (e2) at (n2.south-|le2.mid) {
+\alt{
+\uri{order} & = \uri{"2"}\\[-0.2em]
+}
+};
+\end{tikzpicture}
+\caption{A property graph with two nodes and two edges. We use the order property on edge $e_2$ to indicate that Michelle Bachelet is the second child of Alberto Bachelet}\label{fig:pgmb}
+\end{figure}
+
+For stricter backwards compatibility with legacy property graphs (where desired), MillenniumDB implements a simple extension of the \data model, called \textit{property \datas}, which allows for \textit{external annotation}, i.e., adding labels and property--value pairs to nodes and edges without creating new nodes and edges. Formally, if $\labels$ is a set of labels, $\cprop$ a set of properties, and  $\values$ a set of values, we define a property \data as follows:
+
+\begin{definition}
+%Let $L$ be a set of labels, $K$ a set of keys/attributes, and $V$ a set of atomic values (e.g. ints, strings, floats, dates, etc.).
+ A \emph{property \data} is defined as a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+%    \item $O \subseteq \objs$, $L \subseteq \labels$, $P \subseteq \cprop$ and $V \subseteq \values$ are finite sets of objects, labels, properties and values, respectively;
+    \item $(O,\gamma)$ is a \data;
+    \item $\lab : O \rightarrow 2^\labels$ is a function
+    %the labelling
+    assigning a finite set of labels to an object; and
+    \item $\prop : O \times \cprop \rightarrow \values$ is a partial function assigning a value to a certain property of an object. 
+    %, to its value.
+\end{itemize}
+Moreover, we assume that for each object $o \in O$, there exists a finite number of properties $p \in \cprop$ such that $\prop(o,p)$ is defined.
+\end{definition}
+
+%\ah{Changed $\mapsto$ to $\rightarrow$. I think $\mapsto$ is understood as being a single mapping of an element.}
+
+%\ah{Why does the definition include $O \subseteq \objs$, but not $K \subseteq \keys$, $L \subseteq \labels$, and $V \subseteq \values$.}
+
+%\ah{Do we permit multiple values per property in the implementation? If so, let's define it that way. One value per property is very restrictive in practice. If we only allow one value per property/object, it would need to be justified or discussed. I propose simply $\prop : O \rightarrow 2^{\keys \times \values}$ (or maybe $\prop : O \times \keys \rightarrow 2^{\values}$, but this is a bit strange as an object and a key can then map to an empty set).}
+
+%\ah{Also is $k \in \keys$ a \textit{key}, an \textit{attribute}, or a \textit{property}? We should stick to one term (and if necessary, the first time they are introduced, mention the aliases). Why not just property and $\mathcal{P}$? It is called a \textit{property} domain graph, and the function itself is called $\prop$.}
+
+%\ah{(More of a doubt: is labelling a partial function too? I guess it's okay if it maps to an empty set. Probably no changed needed.)}
+
+In summary, \datas capture the graph structure of our model, while property \datas additionally permit annotating that graph structure by adding labels and property--value pairs to objects, as ordinary property graphs do; such annotations are then considered external from the graph structure. The property graph in Figure~\ref{fig:pgmb}
+can be represented with the following property \data $G=(O,\gamma,\lab,\prop)$, where the graph structure is as follows:
+%\begin{minipage}{0.45\columnwidth}
+{\small
+\begin{align*}
+O & = \{n_1,n_2,e_1,e_2\}, \\%[-0.6ex]
+%L & = \{\textsf{human},\textsf{father},\textsf{child}\}, \\%[-0.6ex]
+%P & = \{\textsf{gender},\textsf{children},\textsf{first name},\textsf{last name},\textsf{death}\} \\%[-0.6ex]
+%V & = \{\textsf{"female"},\textsf{3},\textsf{"Michelle"},\textsf{"Bachelet"},\textsf{"male"},\textsf{2},\\%[-0.6ex]
+%& \phantom{= \{} \texttt{"Alberto"},\texttt{"12 March 1974"}\}, \\%[-0.6ex]
+\gamma(e_1) & = (n_1,\textsf{father},n_2),\\%[-0.6ex]
+\gamma(e_2) & = (n_2,\textsf{child},n_1),
+\end{align*}}
+%\end{minipage}
+and the annotations of the graph structure are as follows:
+\vspace{-2mm}
+%(showing the graph structure on the left, and its annotations on the right):
+%\begin{minipage}{0.45\columnwidth}
+%\begin{align*}
+%\textsf{lab}(n_1) & = \textsf{human}\\%[-0.6ex]
+%\textsf{lab}(n_2) & = \textsf{human}\\%[-0.6ex]
+%\textsf{prop}(e_2,\textsf{order}) & = \texttt{"2"}\\%[-0.6ex]
+%\textsf{prop}(n_1,\textsf{gender}) & = \texttt{"female"}\\%[-1.2ex]
+%\textsf{prop}(n_1,\textsf{children}) & = \textsf{3}\\%[-1.2ex]
+%\textsf{prop}(n_1,\textsf{first name}) & = \texttt{"Michelle"}\\%[-1.2ex]
+%\textsf{prop}(n_1,\textsf{last name}) & = \texttt{"Bachelet"}\\%[-1.2ex]
+%\textsf{prop}(n_2,\textsf{gender}) & = \texttt{"male"}\\%[-1.2ex]
+%\textsf{prop}(n_2,\textsf{children}) & = \textsf{2}\\%[-1.2ex]
+%\textsf{prop}(n_2,\textsf{first name}) & = \texttt{"Alberto"}\\%[-1.2ex]
+%\textsf{prop}(n_2,\textsf{last name}) & = \texttt{"Bachelet"}\\%[-1.2ex]
+%\textsf{prop}(n_2,\textsf{death}) & = \texttt{"12 March 1974"}\\%[-1.2ex]
+%\ldots
+%\end{align*}
+\begin{center}
+{\small
+\begin{tabular}{ll}
+$\textsf{lab}(n_1)= \textsf{human}$ &
+$\textsf{prop}(n_1,\textsf{last name}) = \textsf{"Bachelet"}$\\
+$\textsf{lab}(n_2) = \textsf{human}$ &
+$\textsf{prop}(n_2,\textsf{gender}) = \textsf{"male"}$\\
+$\textsf{prop}(e_2,\textsf{order}) = \textsf{"2"}$ &
+$\textsf{prop}(n_2,\textsf{children}) = \textsf{"2"}$\\
+$\textsf{prop}(n_1,\textsf{gender}) = \textsf{"female"}$ &
+$\textsf{prop}(n_2,\textsf{first name}) = \textsf{"Alberto"}$\\
+$\textsf{prop}(n_1,\textsf{children}) = \textsf{"3"}$ &
+$\textsf{prop}(n_2,\textsf{last name}) = \textsf{"Bachelet"}$\\
+$\textsf{prop}(n_1,\textsf{first name}) = \textsf{"Michelle"}$ &
+$\textsf{prop}(n_2,\textsf{death}) = \textsf{"12 March 1974"}$
+\end{tabular}
+}
+\end{center}
+%\end{minipage}
+%
+%\noindent
+\medskip
+
+\noindent The relational representation of property \data then adds two new relations alongside \textsc{DomainGraph}:
+\begin{center}
+$\textsc{Labels}(\textsf{object},\textsf{label})$,\\
+$\textsc{Properties}(\underline{\textsf{object},\textsf{property}},\textsf{value}),$
+\end{center}
+%
+where \underline{\textsf{object},\,\textsf{property}} is a primary key of the second relation, with the first relation allowing multiple labels per object.
+%Relation $\textsc{Labels}$ allows multiple labels per object, while relation $\textsc{Properties}$ allows multiple values per object and property.
+
+
+\subsection{Why \datas?}\label{ssec:whydg}
+
+%
+
+The \data model allows us to capture higher-arity relations more directly. In Figure \ref{fig:dg} we have one possible representation of the statements from Figure \ref{fig:mb}. We only show edge ids as needed (all edges have ids). We do not use the ``property part" of our data model for external annotation, considering that the elements of Wikidata statements shown can form nodes in the graph itself. 
+
+
+
+%In reality, the labelling and property/value pairs are supported primarily as a fact of backwards compatibility with property graphs, and are useful in that context. They are also useful when pure data (e.g. strings, etc.) need to be pegged to an object in the database. One future extension would be to allow arbitrary objects as labels, properties, and values. % Aidan: now covered in the previous section
+
+Domain graphs are inspired by \textit{named graphs} in RDF/SPARQL (where named graphs have one triple/edge each). Both domain graphs and named graphs can be represented as quads. However, the edge ids of domain graphs identify each quad, which, as we will discuss in Section~\ref{sec:architecture}, simplifies indexing. Named graphs were proposed to represent multiple RDF graphs for publishing and querying. SPARQL thus uses syntax -- such as \textsf{FROM}, \textsf{FROM NAMED}, \textsf{GRAPH} -- that is unintuitive when querying singleton named graphs representing higher-arity relations. Moreover, SPARQL does not support querying paths that span named graphs; in order to support path queries over singleton named graphs, all edges would need to be duplicated (virtually or physically) into a single graph~\cite{HernandezHK15}. Named graphs (with multiple edges) could be supported in domain graphs using a reserved term \textsf{graph}, and edges of the form $\gamma(e_3) = (e_1,\textsf{graph},g_1)$, $\gamma(e_4) =(e_2,\textsf{graph},g_1)$; optionally, \textit{named domain graphs} could be considered in the future to support multiple domain graphs with quins.
+
+\begin{figure}[t]
+\setlength{\vgap}{0.8cm}
+\setlength{\hgap}{1.6cm}
+\centering
+\begin{tikzpicture}
+\node[iri,anchor=west,yshift=1ex] (sp1) {Michelle Bachelet};
+\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+  edge[arrin,bend left=40] node[enode] (e1) {$e_1:$ position held} (sp1)
+  edge[arrin,bend right=40] node[enode] (e2) {$e_2:$  position held} (sp1);
+
+\node[iri,below=\vgap of e1] (ttt) {2014-03-11}
+  edge[arrin] node[lab] {start date} (e1);
+  
+\node[iri,left=0.5\hgap of sp1] (mb) {Sebastián Piñera}
+  edge[arrin,bend right=30] node[lab,xshift=1ex] {replaces} (e1.210)
+  edge[arrin,bend right=10] node[lab,xshift=-1ex] {replaced by} (e1.190)
+  edge[arrin,bend left=20] node[lab,xshift=-1ex] {replaced by} (e2.170);
+
+\node[iri,right=0.5\hgap of ttt] (ttf) {2018-03-11}
+  edge[arrin] node[lab,xshift=1ex] {end date} (e1);
+
+\node[iri,above=\vgap of e2] (ttt2) {2006-03-11}
+  edge[arrin] node[lab] {start date} (e2);
+  
+\node[iri,left=0.5\hgap of ttt2] (rl) {Ricardo Lagos}
+  edge[arrin] node[lab] {replaces} (e2);
+
+\node[iri,right=0.5\hgap of ttt2] (ttf2) {2010-03-11}
+  edge[arrin] node[lab,xshift=1ex] {end date} (e2);
+
+%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+
+%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+\end{tikzpicture}
+\caption{Domain graph for Figure~\ref{fig:mb} \label{fig:dg}}
+\end{figure}
+
+The idea of assigning ids to edges/triples for similar purposes as described here is a natural one, and not new to this work. \citet{HernandezHK15} explored using singleton named graphs in order to represent Wikidata qualifiers, placing one triple in each named graph, such that the name acts as an id for the triple. In parallel with our work, recently a data model analogous to domain graphs has been independently proposed for use in Amazon Neptune, which the authors call 1G~\cite{LassilaSBBBKKLST}. Their proposal does not discuss a formal definition for the model, nor a query language, storage and indexing, implementation, etc., but the reasoning and justification that they put forward for the model is similar to ours. To the best of our knowledge, our work is the first to describe a query language, storage and indexing schemes, query planner -- and ultimately a fully-fledged graph database engine -- built specifically for this model. Furthermore, with property domain graphs, we support annotation external to the graph, which we believe to be a useful extension that enables better compatibility with property graphs.
+
+Table~\ref{tab:gmodel} summarizes the features that are directly supported by the respective graph models themselves without requiring \textit{reserved terms}, which would include, for example, \textsf{source}, \textsf{label} and \textsf{target} in Figure~\ref{fig:delg} (all features except \textit{External annotation} can be supported in all models with reserved vocabulary). Reserved terms can add indirection to modeling (e.g., reification~\cite{HernandezHK15}), and can clutter the data, necessitating more tuples or higher-arity tuples to store, leading to more joins and/or index permutations. The features are then defined as follows, considering directed (labeled) edges:
+
+\begin{itemize}
+\item \textit{Edge type/label}: assign a type or label to an edge.
+\item \textit{Node label}: assign labels to nodes.
+\item \textit{Edge annotation}: assign property--value pairs to an edge.
+\item \textit{Node annotation}: assign property--value pairs to a node.
+\item \textit{External annotation}: nodes/edges can be annotated without adding new nodes or edges.
+\item \textit{Edge as node}: an edge can be referenced as a node (this allows edges to be connected to nodes of the graph).
+\item \textit{Edge as nodes}: a single unique edge can be referenced as multiple nodes.
+\item \textit{Nested edge nodes}: an edge involving an edge node can itself be referenced as a node, and so on, recursively.
+\item \textit{Graph as node}: a graph can be referenced as a node.
+\end{itemize}
+
+Some \nmark's in Table~\ref{tab:gmodel} are more benign than others; for example, \textit{Node label} requires a reserved term (e.g., \textsf{rdf:type}), but no extra tuples; on the other hand, \textit{Edge as node} requires reification, using at least one extra tuple, and at least one reserved term.
+
+Wikidata requires \textit{Edge as nodes} for cases as shown in Figure~\ref{fig:mb} (since values such as \textsf{Ricardo Lagos} are themselves nodes). Only named graphs, domain graphs and property domain graphs can model such examples without reserved terms. Comparing named graphs and domain graphs, the latter sacrifices the ``\textit{Graph as node}'' feature without reserved vocabulary to reduce indexing permutations (discussed in Section~\ref{sec:architecture}). Such a feature is not needed by Wikidata, but could be added in future versions. Property domain graphs further support external annotation, and thus better compatibility with legacy property graphs.
+
+%In summary, the \data model and the extended property \data model supported by MillenniumDB allow the user to treat their graph as a property graph, an RDF or RDF* graph, or a mix of both, akin to how Wikidata uses qualifiers on edges (like property graphs) whose properties and values can also be nodes/objects in the graph (like in RDF). Like RDF* or property graphs, domain graphs support nesting, where edges about edges are themselves recursively edges with ids; unlike RDF*, but like property graphs, the same edge can be described in multiple ways using different edge ids. Unlike named graphs, domain graphs can be indexed with fewer index permutations, and are designed from scratch for the purpose of modeling higher-arity relations.
+
+\renewcommand{\nmark}{}
+
+\begin{table}
+\caption{The features supported by graph models without reserved terms (NG = Named Graphs, PG = Property Graphs, DG = Domain Graphs, PDG = Property Domain Graphs) \label{tab:gmodel}}
+\begin{tabular}{ccccccc}
+\toprule
+ & RDF & RDF* & NG & PG & DG & PDG \\
+\toprule
+\textit{Edge type/label} & \ymark & \ymark & \ymark & \ymark & \ymark & \ymark \\
+\textit{Node label} & \nmark & \nmark & \nmark & \ymark & \nmark & \ymark \\
+\textit{Edge annotation} & \nmark & \ymark & \ymark & \ymark & \ymark & \ymark \\
+\textit{Node annotation} & \ymark & \ymark & \ymark & \ymark & \ymark & \ymark \\
+\textit{External annotation} & \nmark & \nmark & \nmark & \ymark & \nmark & \ymark \\
+\textit{Edge as node} & \nmark & \ymark & \ymark & \nmark & \ymark & \ymark \\
+\textit{Edge as nodes} & \nmark & \nmark & \ymark & \nmark & \ymark & \ymark \\
+\textit{Nested edge nodes} & \nmark & \ymark & \ymark & \nmark & \ymark & \ymark \\
+\textit{Graph as node} & \nmark & \nmark & \ymark & \nmark & \nmark & \nmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%One can actually express much more, since there can be a hierarchy of relations that are represented in it. We note that an exploration of the expressive power of this data model lies outside of the scope of this paper, so we omit it here. As a side note in this direction, nested qualifiers actually allow the \data model to express features that are outside of the scope of hypergraphs. %Aidan: I would not discuss hypergraphs as they define edges as sets, not tuples. I see them as completely unrelated.
+
+%\begin{figure}[tb]
+%\setlength{\vgap}{0.8cm}
+%\setlength{\hgap}{1.9cm}
+%\centering
+%\begin{tikzpicture}
+%\node[iri,anchor=center,minimum width=6.8cm,minimum height=1.3cm,dashed] (e1) {};
+%
+%\node[anchor=south east,above left=0.1ex of e1.south east,dashed] (e1i) {$e_1$};
+%
+%\node[iri,right=1ex of e1.west,anchor=west,yshift=1ex] (sp1) {Michelle Bachelet};
+%\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+%  edge[arrin] node[iri,draw=none] {position held} (sp1);
+%  
+%\node[iri,anchor=center,minimum width=6.8cm,minimum height=1.3cm,anchor=mid,fill=none,xshift=-4ex,yshift=2ex,dashed] (e2) at (e1) {};
+%
+%\node[anchor=north west,below right=0.1ex of e2.north west] (e2i) {$e_2$};
+%
+%\node[iri,below=\vgap of e1] (ttt) {2018-03-11}
+%  edge[arrin] node[lab] {start date} (e1);
+%  
+%\node[iri,left=\hgap of ttt] (mb) {Sebastián Piñera}
+%  edge[arrin,bend right=20] node[lab,xshift=1ex] {replaces} (e1)
+%  edge[arrin] node[lab,xshift=-1ex] {replaced by} (e1)
+%  edge[arrin,bend left=10] node[lab,xshift=-1ex] {replaced by} (e2.190);
+%
+%\node[iri,right=\hgap of ttt] (ttf) {2014-03-11}
+%  edge[arrin] node[lab] {end date} (e1);
+%
+%\node[iri,above=\vgap of e2] (ttt2) {2006-03-11}
+%  edge[arrin] node[lab] {start date} (e2);
+%  
+%\node[iri,left=\hgap of ttt2] (rl) {Ricardo Lagos}
+%  edge[arrin] node[lab,xshift=1ex] {replaces} (e2);
+%
+%\node[iri,right=\hgap of ttt2] (ttf2) {2010-03-11}
+%  edge[arrin] node[lab] {end date} (e2);
+%
+%%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+%
+%%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+%\end{tikzpicture}
+%\caption{Domain graph for Figure~\ref{fig:mb} (v1) \label{fig:dg1}}
+%\end{figure}
+%
+%\begin{figure}[tb]
+%\setlength{\vgap}{0.8cm}
+%\setlength{\hgap}{1.9cm}
+%\centering
+%\begin{tikzpicture}
+%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,dashed] (e1) {};
+%
+%\node[anchor=south east,above left=0.1ex of e1.south east] (e1i) {$e_1$};
+%
+%\node[iri,right=1ex of e1.west,anchor=west] (sp1) {Michelle Bachelet};
+%\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+%  edge[arrin] node[iri,draw=none] {position held} (sp1);
+%  
+%\node[iri,below=\vgap of e1] (mb) {Sebastián Piñera}
+%  edge[arrin,bend right=40] node[lab,xshift=1ex] {replaces} (e1)
+%  edge[arrin,bend left=40] node[lab,xshift=-1ex] {replaced by} (e1);
+%
+%\node[iri,left=\hgap of mb] (ttt) {2018-03-11}
+%  edge[arrin] node[lab] {start date} (e1);
+%
+%\node[iri,right=\hgap of mb] (ttf) {2014-03-11}
+%  edge[arrin] node[lab] {end date} (e1);
+%  
+%\node[iri,anchor=center,below=\vgap of mb,minimum width=6.6cm,minimum height=0.7cm,dashed] (e2) {}
+%  edge[arrout] node[lab,xshift=-1ex] {replaced by} (mb);
+%
+%\node[anchor=south east,above left=0.1ex of e2.south east,dashed] (e2i) {$e_2$};
+%
+%\node[iri,right=1ex of e2.west,anchor=west] (sp2) {Michelle Bachelet};
+%\node[iri,right=\hgap of sp2] (ch2) {President of Chile}
+%  edge[arrin] node[iri,draw=none] {position held} (sp2);
+%
+%\node[iri,below=\vgap of e2] (rl) {Ricardo Lagos}
+%  edge[arrin] node[lab] {replaces} (e2);
+%
+%\node[iri,left=\hgap of rl] (ttt2) {2006-03-11}
+%  edge[arrin] node[lab] {start date} (e2);
+%
+%\node[iri,right=\hgap of rl] (ttf2) {2010-03-11}
+%  edge[arrin] node[lab] {end date} (e2);
+%
+%%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+%
+%%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+%\end{tikzpicture}
+%\caption{Domain graph for Figure~\ref{fig:mb} (v2) \label{fig:dg2}}
+%\end{figure}
+%
+%\begin{figure}[tb]
+%\setlength{\vgap}{0.8cm}
+%\setlength{\hgap}{1.6cm}
+%\centering
+%\begin{tikzpicture}
+%\node[iri,anchor=west,yshift=1ex] (sp1) {Michelle Bachelet};
+%\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+%  edge[arrin,bend left=40] node[fill=white] (e1) {$e_1:$ position held} (sp1)
+%  edge[arrin,bend right=40] node[fill=white] (e2) {$e_2:$  position held} (sp1);
+%
+%\node[iri,below=\vgap of e1] (ttt) {2018-03-11}
+%  edge[arrin] node[lab] {start date} (e1);
+%  
+%\node[iri,left=0.5\hgap of sp1] (mb) {Sebastián Piñera}
+%  edge[arrin,bend right=30] node[lab,xshift=1ex] {replaces} (e1)
+%  edge[arrin,bend right=10] node[lab,xshift=-1ex] {replaced by} (e1)
+%  edge[arrin,bend left=20] node[lab,xshift=-1ex] {replaced by} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt] (ttf) {2014-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e1);
+%
+%\node[iri,above=\vgap of e2] (ttt2) {2006-03-11}
+%  edge[arrin] node[lab] {start date} (e2);
+%  
+%\node[iri,left=0.5\hgap of ttt2] (rl) {Ricardo Lagos}
+%  edge[arrin] node[lab] {replaces} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt2] (ttf2) {2010-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e2);
+%
+%%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+%
+%%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+%\end{tikzpicture}
+%\caption{Domain graph for Figure~\ref{fig:mb} (v1) \label{fig:dg1}}
+%\end{figure}
+
+%\begin{figure}[tb]
+%\setlength{\vgap}{0.8cm}
+%\setlength{\hgap}{1.6cm}
+%\centering
+%\begin{tikzpicture}
+%\tikzset{
+%    elab/.style={ 
+%     iri,
+%     text centered,
+%     fill=white,
+%     text=black, 
+%     opacity=0.98,
+%     text opacity=1,
+%     inner sep=0.5ex,
+%     font=\sf\footnotesize\hsp,
+%     dotted
+%    },
+%    arrin/.append style={thin},
+%    arrout/.append style={thin},
+%    iri/.append style={thick}
+%}
+%\node[iri,anchor=west,yshift=1ex] (sp1) {Michelle Bachelet};
+%\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+%  edge[arrin,bend left=40] node[elab,pos=0.5] (e1) {$e_1:$ position held} (sp1)
+%  edge[arrin,bend right=40] node[elab,pos=0.5] (e2) {$e_2:$  position held} (sp1);
+%
+%\node[iri,below=\vgap of e1] (ttt) {2018-03-11}
+%  edge[arrin] node[lab] {start date} (e1);
+%  
+%\node[iri,left=0.5\hgap of sp1] (mb) {Sebastián Piñera}
+%  edge[arrin,bend right=30] node[lab,xshift=1ex] {replaces} (e1)
+%  edge[arrin,bend right=10] node[lab,xshift=-1ex] {replaced by} (e1)
+%  edge[arrin,bend left=20] node[lab,xshift=-1ex] {replaced by} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt] (ttf) {2014-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e1);
+%
+%\node[iri,above=\vgap of e2] (ttt2) {2006-03-11}
+%  edge[arrin] node[lab] {start date} (e2);
+%  
+%\node[iri,left=0.5\hgap of ttt2] (rl) {Ricardo Lagos}
+%  edge[arrin] node[lab] {replaces} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt2] (ttf2) {2010-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e2);
+%
+%%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+%
+%%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+%\end{tikzpicture}
+%\caption{Domain graph for Figure~\ref{fig:mb} (v2) \label{fig:dg2}}
+%\end{figure}
+%
+%\begin{figure}[tb]
+%\setlength{\vgap}{0.8cm}
+%\setlength{\hgap}{1.6cm}
+%\centering
+%\begin{tikzpicture}
+%\tikzset{
+%    elab/.style={ 
+%     iri,
+%     circle,
+%     text centered,
+%     thin,
+%     fill=white, 
+%     opacity=0.98,
+%     text opacity=1,
+%     inner sep=0.5ex,
+%     font=\sf\footnotesize\hsp
+%    }
+%}
+%\node[iri,anchor=west,yshift=1ex] (sp1) {Michelle Bachelet};
+%\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+%  edge[arrin,bend left=40] node[elab,pos=0.5] (e1) {$e_1$}  (sp1)
+%  edge[arrin,bend right=40] node[elab,pos=0.5] (e2) {$e_2$} (sp1);
+%  
+%\node[lab,above=0cm of e1] (le1) {position held};
+%\node[lab,below=0cm of e2] (le2) {position held};
+%
+%\node[iri,below=\vgap of e1] (ttt) {2018-03-11}
+%  edge[arrin] node[lab] {start date} (e1);
+%  
+%\node[iri,left=0.5\hgap of sp1] (mb) {Sebastián Piñera}
+%  edge[arrin,bend right=30] node[lab,xshift=1ex] {replaces} (e1)
+%  edge[arrin,bend right=10] node[lab,xshift=-1ex] {replaced by} (e1)
+%  edge[arrin,bend left=20] node[lab,xshift=-1ex] {replaced by} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt] (ttf) {2014-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e1);
+%
+%\node[iri,above=\vgap of e2] (ttt2) {2006-03-11}
+%  edge[arrin] node[lab] {start date} (e2);
+%  
+%\node[iri,left=0.5\hgap of ttt2] (rl) {Ricardo Lagos}
+%  edge[arrin] node[lab] {replaces} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt2] (ttf2) {2010-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e2);
+%
+%%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+%
+%%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+%\end{tikzpicture}
+%\caption{Domain graph for Figure~\ref{fig:mb} (v3) \label{fig:dg3}}
+%\end{figure}
+%
+%\begin{figure}[tb]
+%\setlength{\vgap}{0.8cm}
+%\setlength{\hgap}{1.6cm}
+%\centering
+%\begin{tikzpicture}
+%\tikzset{
+%    elab/.style={ 
+%     iri,
+%     circle,
+%     dashed,
+%     text centered,
+%     fill=white, 
+%     opacity=0.98,
+%     text opacity=1,
+%     inner sep=0.3ex,
+%     font=\sf\footnotesize\hsp
+%    }
+%}
+%\node[iri,anchor=west,yshift=1ex] (sp1) {Michelle Bachelet};
+%\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+%  edge[arrin,bend left=40] node[lab,pos=0.5] (le1) {position held}  (sp1)
+%  edge[arrin,bend right=40] node[lab,pos=0.5] (le2) {position held} (sp1);
+%  
+%\node[elab,below=0cm of le1] (e1) {$e_1$};
+%\node[elab,above=0cm of le2] (e2) {$e_2$};
+%
+%\node[iri,below=\vgap of e1] (ttt) {2018-03-11}
+%  edge[arrin] node[lab] {start date} (e1);
+%  
+%\node[iri,left=0.5\hgap of sp1] (mb) {Sebastián Piñera}
+%  edge[arrin,bend right=30] node[lab,xshift=1ex] {replaces} (e1)
+%  edge[arrin,bend right=10] node[lab,xshift=-1ex] {replaced by} (e1)
+%  edge[arrin,bend left=20] node[lab,xshift=-1ex] {replaced by} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt] (ttf) {2014-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e1);
+%
+%\node[iri,above=\vgap of e2] (ttt2) {2006-03-11}
+%  edge[arrin] node[lab] {start date} (e2);
+%  
+%\node[iri,left=0.5\hgap of ttt2] (rl) {Ricardo Lagos}
+%  edge[arrin] node[lab] {replaces} (e2);
+%
+%\node[iri,right=0.5\hgap of ttt2] (ttf2) {2010-03-11}
+%  edge[arrin] node[lab,xshift=1ex] {end date} (e2);
+%
+%%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+%
+%%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+%\end{tikzpicture}
+%\caption{Domain graph for Figure~\ref{fig:mb} (v3) \label{fig:dg3}}
+%\end{figure}

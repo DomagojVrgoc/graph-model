@@ -1,0 +1,150 @@
+As illustrated in the previous section, one of the key features we need to model complex statements, such as multiple presidencies of a particular person, is the ability to refer to the entire statement repeatedly. More precisely, we need to be able to use a graph edge as a source of another node. We capture this concept by introducing an data model called \Data, which   assignin ids to edges in order to capture higher-arity relations within graphs~\cite{HernandezHK15,IlievskiGCDYRLL20,LassilaSBBBKKLST}. Formally, assume a universe $\objs$ of objects (ids, strings, numbers, IRIs, etc.). We define \datas as follows:
+
+\begin{definition}
+A \emph{one graph} $G = (O,\gamma)$ consists of a finite set of objects $O\subseteq \objs$ and a partial mapping $\gamma : O \rightarrow O \times O \times O$. 
+\end{definition}
+
+Intuitively, $O$ is the set of objects that appear in our graph database, and $\gamma$ models edges between objects. If $\gamma(e)=(n_1,t,n_2)$, this states that the edge $(n_1,t,n_2)$ has id $e$, type $t$, and links the source node $n_1$ to the target node $n_2$.\footnote{Herein, we say ``\textit{edge type}'' rather than ``\textit{edge label}'' to highlight that the type forms part of the edge, rather than being an annotation on the edge, as in property graphs.} We can analogously define our model as a relation:
+\[\textsc{Connections}(\textsf{source},\textsf{type},\textsf{target},\underline{\textsf{eid}}) \]
+where \underline{\textsf{eid}} (edge id) is a primary key of the relation. 
+
+
+We stated that \data model allows us to capture higher-arity relations more directly. So how do we represent the WikiData statements from  Figure \ref{fig:mb}? One possible representation is given in  Figure \ref{fig:dg}. We only show edge ids as needed (all edges have ids). 
+
+\begin{figure}[t]
+\setlength{\vgap}{0.8cm}
+\setlength{\hgap}{1.6cm}
+\centering
+\begin{tikzpicture}
+\node[iri,anchor=west,yshift=1ex] (sp1) {Michelle Bachelet};
+\node[iri,right=\hgap of sp1] (ch1) {President of Chile}
+  edge[arrin,bend left=40] node[enode] (e1) {$e_1:$ position held} (sp1)
+  edge[arrin,bend right=40] node[enode] (e2) {$e_2:$  position held} (sp1);
+
+\node[iri,below=\vgap of e1] (ttt) {2014-03-11}
+  edge[arrin] node[lab] {start date} (e1);
+  
+\node[iri,left=0.5\hgap of sp1] (mb) {Sebastián Piñera}
+  edge[arrin,bend right=30] node[lab,xshift=1ex] {replaces} (e1.210)
+  edge[arrin,bend right=10] node[lab,xshift=-1ex] {replaced by} (e1.190)
+  edge[arrin,bend left=20] node[lab,xshift=-1ex] {replaced by} (e2.170);
+
+\node[iri,right=0.5\hgap of ttt] (ttf) {2018-03-11}
+  edge[arrin] node[lab,xshift=1ex] {end date} (e1);
+
+\node[iri,above=\vgap of e2] (ttt2) {2006-03-11}
+  edge[arrin] node[lab] {start date} (e2);
+  
+\node[iri,left=0.5\hgap of ttt2] (rl) {Ricardo Lagos}
+  edge[arrin] node[lab] {replaces} (e2);
+
+\node[iri,right=0.5\hgap of ttt2] (ttf2) {2010-03-11}
+  edge[arrin] node[lab,xshift=1ex] {end date} (e2);
+
+%\node[iri,anchor=center,minimum width=6.6cm,minimum height=0.7cm,below=mb] (e1) {};
+
+%\node[anchor=east,left=0.1ex of e1.east] (e1i) {$e_1$};
+\end{tikzpicture}
+\caption{Domain graph for Figure~\ref{fig:mb} \label{fig:dg}}
+\end{figure}
+
+
+
+One could argue that a more natural representation would be to have something similar to the property graph of Figure \ref{fig:pg}, but now with attributes and values that can again be graph objects. After all, the representation presented here is somewhat similar to the reification we gave before, but with better properties. The solution to this is what we call the property-\Data, a full data model allowing edges as  nodes, multiple (referenceable) labels per node, as well property/value pairs where each art can again be a graph node. Formally, we define:
+
+%\ah{I am not sure if see the distinction between edge type/edge label/predicate, source/subject, target/object, connection/edge/relation? If there is a distinction, we should make it clear. If there is no distinction, I think we should stick to one preferred nomenclature for the paper (even if diverse nomenclature is used elsewhere or in the implementation). Personally I prefer edge label and edge as they are more widely accepted and more traditional. I am indifferent about source/subject and target/object, but if we go for edge label/type rather than predicate, then source and target might be more consistent. Nodes denote entities and edges encode relations(hips) between entities.}
+
+\begin{definition}
+ A \emph{property \data} is defined as a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+%    \item $O \subseteq \objs$, $L \subseteq \labels$, $P \subseteq \cprop$ and $V \subseteq \values$ are finite sets of objects, labels, properties and values, respectively;
+    \item $(O,\gamma)$ is a \data;
+    \item $\lab : O \rightarrow 2^O$ is a function
+    %the labelling
+    assigning a finite set of labels to an object; and
+    \item $\prop : O \times O \rightarrow O$ is a partial function assigning a value to a certain property of an object. 
+    %, to its value.
+\end{itemize}
+Moreover, we assume that for each object $o \in O$, there exists a finite number of properties $p \in O$ such that $\prop(o,p)$ is defined.
+\end{definition}
+
+The statements of Figure \ref{fig:mb} can now be represented as a property-\data almost identical to the property graph from Figure \ref{fig:pg}, but now having each label, property, and its value to be a graph object. More precisely, the property \texttt{start date} of the edge $e_1$ would again be a graph object, as would the value of the property \texttt{replaces}; i.e. \texttt{Sebasti\'an Pi\~nera}. Similarly, the label \texttt{human} of the node $n_1$ can also be an object in a property-\data\footnote{If needed, one can also define a special set of literals disjoint from $\objs$, and specify that labels (resp. properties and their values) can be either literals or referenceable objects}. %Property-\datas then naturally capture property graphs.
+
+ The relational representation of property \data then adds two new relations alongside \textsc{Connections}:
+\begin{center}
+$\textsc{Labels}(\textsf{object},\textsf{label})$,\\
+$\textsc{Properties}(\underline{\textsf{object},\textsf{property}},\textsf{value}),$
+\end{center}
+%
+where \underline{\textsf{object},\,\textsf{property}} is a primary key of the second relation, with the first relation allowing multiple labels per object.
+%Relation $\textsc{Labels}$ allows multiple labels per object, while relation $\textsc{Properties}$ allows multiple values per object and property.
+
+
+\subsection{\Data and other graph models}\label{ssec:whydg}
+
+The \data data model naturally subsumes the RDF graph model, as well as RDF*. To show how RDF is modeled in \datas, consider the following edge, claiming that Michelle Bachelet was the president of Chile.
+
+\medskip
+\begin{center}
+\gedge[arrin][2.5cm]{Michelle Bachelet}{position held}{President of Chile}
+\end{center}
+\medskip
+
+\noindent
+We can encode this triple in a \data by storing the tuple \textsf{(Michelle Bachelet, position held, President of Chile, e)} in the \textsf{DomainGraph} relation, where \textsf{e} denotes a unique (potentially auto-generated) edge id, or equivalently stating that:
+$$\gamma(\textsf{e}) = \textsf{(Michelle Bachelet, position held, President of Chile)}.$$
+Here the edge id can be automatically generated. One can thus automatically load an RDF dataset into \Data, by assigning a new edge id to each triple. The id of the edge itself is not needed in the RDF data model, but it can be used for modelling RDF-star (RDF*) graphs. On the other hand, the property-\Data model naturally subsumes property graphs, where each property graph can be taken verbatim to be a property-\Data.
+
+%\Datas are inspired by \textit{named graphs} in RDF/SPARQL (where named graphs have one triple/edge each). Both domain graphs and named graphs can be represented as quads. Named graphs were proposed to represent multiple RDF graphs for publishing and querying. SPARQL thus uses syntax -- such as \textsf{FROM}, \textsf{FROM NAMED}, \textsf{GRAPH} -- that is unintuitive when querying singleton named graphs representing higher-arity relations. Moreover, SPARQL does not support querying paths that span named graphs; in order to support path queries over singleton named graphs, all edges would need to be duplicated (virtually or physically) into a single graph~\cite{HernandezHK15}. Named graphs (with multiple edges) could be supported in domain graphs using a reserved term \textsf{graph}, and edges of the form $\gamma(e_3) = (e_1,\textsf{graph},g_1)$, $\gamma(e_4) =(e_2,\textsf{graph},g_1)$; optionally, \textit{named domain graphs} could be considered in the future to support multiple domain graphs with quins.
+
+
+The idea of assigning ids to edges/triples for similar purposes as described here is a natural one, and not new to this work. \citet{HernandezHK15} explored using singleton named graphs in order to represent Wikidata qualifiers, placing one triple in each named graph, such that the name acts as an id for the triple. In parallel with our work, recently a data model analogous to domain graphs has been independently proposed for use in Amazon Neptune, which the authors call 1G~\cite{LassilaSBBBKKLST}. Their proposal does not discuss a formal definition for the model, nor a query language, storage and indexing, implementation, etc., but the reasoning and justification that they put forward for the model is similar to ours. To the best of our knowledge, our work is the first to describe a query language, storage and indexing schemes, query planner -- and ultimately a fully-fledged graph database engine -- built specifically for this model. Furthermore, with property domain graphs, we support annotation external to the graph, which we believe to be a useful extension that enables better compatibility with property graphs.
+
+Table~\ref{tab:gmodel} summarizes the features that are directly supported by the respective graph models themselves without requiring \textit{reserved terms}, which would include, for example, \textsf{source}, \textsf{label} and \textsf{target} in Figure~\ref{fig:delg} (all features except \textit{External annotation} can be supported in all models with reserved vocabulary). Reserved terms can add indirection to modeling (e.g., reification~\cite{HernandezHK15}), and can clutter the data, necessitating more tuples or higher-arity tuples to store, leading to more joins and/or index permutations. The features are then defined as follows, considering directed (labeled) edges:
+
+\begin{itemize}
+\item \textit{Edge type/label}: assign a type or label to an edge.
+\item \textit{Node label}: assign labels to nodes.
+\item \textit{Label as node}: label can be a node.
+\item \textit{Edge annotation}: assign property--value pairs to an edge.
+\item \textit{Node annotation}: assign property--value pairs to a node.
+\item \textit{External annotation}: nodes/edges can be annotated without adding new nodes or edges.
+\item \textit{Annotation name as node}: the property part of an annotation can be a node.
+\item \textit{Annotation value as node}: the value part of an annotation can be a node.
+\item \textit{Edge as node}: an edge can be referenced as a node (this allows edges to be connected to nodes of the graph).
+\item \textit{Edge as nodes}: a single unique edge can be referenced as multiple nodes.
+\item \textit{Nested edge nodes}: an edge involving an edge node can itself be referenced as a node, and so on, recursively.
+\item \textit{Graph as node}: a graph can be referenced as a node.
+\end{itemize}
+
+Some \nmark's in Table~\ref{tab:gmodel} are more benign than others; for example, \textit{Node label} requires a reserved term (e.g., \textsf{rdf:type}), but no extra tuples; on the other hand, \textit{Edge as node} requires reification, using at least one extra tuple, and at least one reserved term.
+
+Wikidata requires \textit{Edge as nodes} for cases as shown in Figure~\ref{fig:mb} (since values such as \textsf{Ricardo Lagos} are themselves nodes). Only named graphs, \datas and property \datas can model such examples without reserved terms. Comparing named graphs and \datas, the latter sacrifices the ``\textit{Graph as node}''. Such a feature is not needed by Wikidata, but could be added in future versions. Property \datas further support external annotation, and thus better compatibility with legacy property graphs.
+
+%In summary, the \data model and the extended property \data model supported by MillenniumDB allow the user to treat their graph as a property graph, an RDF or RDF* graph, or a mix of both, akin to how Wikidata uses qualifiers on edges (like property graphs) whose properties and values can also be nodes/objects in the graph (like in RDF). Like RDF* or property graphs, domain graphs support nesting, where edges about edges are themselves recursively edges with ids; unlike RDF*, but like property graphs, the same edge can be described in multiple ways using different edge ids. Unlike named graphs, domain graphs can be indexed with fewer index permutations, and are designed from scratch for the purpose of modeling higher-arity relations.
+
+\renewcommand{\nmark}{}
+
+\begin{table}
+\caption{The features supported by graph models without reserved terms (NG = Named Graphs, PG = Property Graphs, 1G = One Graphs, P1G = Property One Graphs) \label{tab:gmodel}}
+\begin{tabular}{ccccccc}
+\toprule
+ & RDF & RDF* & NG & PG & 1G & P1G \\
+\toprule
+\textit{Edge type/label} & \ymark & \ymark & \ymark & \ymark & \ymark & \ymark \\
+\textit{Node label} & \nmark & \nmark & \nmark & \ymark & \nmark & \ymark \\
+\textit{Label as node} & \nmark & \nmark & \nmark & \nmark & \nmark & \ymark \\
+\textit{Edge annotation} & \nmark & \ymark & \ymark & \ymark & \ymark & \ymark \\
+\textit{Node annotation} & \ymark & \ymark & \ymark & \ymark & \ymark & \ymark \\
+\textit{External annotation} & \nmark & \nmark & \nmark & \ymark & \nmark & \ymark \\
+\textit{Annotation name as node} & \nmark & \nmark & \nmark & \nmark & \nmark & \ymark \\
+\textit{Annotation value as node} & \nmark & \nmark & \nmark & \nmark & \nmark & \ymark \\
+\textit{Edge as node} & \nmark & \ymark & \ymark & \nmark & \ymark & \ymark \\
+\textit{Edge as nodes} & \nmark & \nmark & \ymark & \nmark & \ymark & \ymark \\
+\textit{Nested edge nodes} & \nmark & \ymark & \ymark & \nmark & \ymark & \ymark \\
+\textit{Graph as node} & \nmark & \nmark & \ymark & \nmark & \nmark & \nmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+

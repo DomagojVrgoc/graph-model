@@ -1,0 +1,511 @@
+%!TEX root = ../main.tex
+
+In this section, we first introduce some of the most popular data models that have been used for graph databases. We then discuss the model that MillenniumDB uses -- called \textit{domain graphs} -- that generalises these other models. In order to exemplify these models, we will take examples from Wikidata~\cite{VrandecicK14}: a prominent, multilingual, open and collaboratively-edited knowledge graph.
+
+\subsection{Popular Graph Data Models}
+
+A number of graph-based data models have become popular in recent years~\cite{AnglesABHRV17}. Perhaps the simplest such model is that of \textit{directed labelled graphs}, that is a set of nodes and edges such that every edge relates a pair of nodes. An edge is graphically represented as \gedge[arrin][0.6cm]{$a$}{$b$}{$c$}, where $a$ is called the source node, $b$ the edge label, and $c$ the target node. A real example of edge might be \gedge[arrin][2cm]{Michelle Bachelet}{position held}{President of Chile}. Hence, nodes are used to represent entities and edges represent binary relations.  
+%A popular concrete model based on \textit{directed edge-labelled graphs} is the RDF model~\cite{CyganiakWL14}. 
+
+While directed labelled graphs work straightforwardly for representing binary relations, things become more complicated if we wish to consider higher arity relations, such as to indicate \textit{when} Michelle Bachelet held the position of President of Chile. Figure~\ref{fig:mb} presents a statement group from the Wikidata knowledge graph~\cite{VrandecicK14} where labels are presented in English for readability. This example contains two statements relating to two different presidencies of \texttt{Michelle Bachelet}. Each statement is associated with its own \textit{qualifiers}, including \texttt{start date} and \texttt{end date}, whom she was replaced by, and whom she replaced. Statements may also be associated with ranks, references, and so forth. Complex statements like this can be cumbersome to be represent as a directed labelled graph, requiring some form of \textit{reification} to decompose $n$-ary relations into binary relations~\cite{HernandezHK15}. For example, Figure~\ref{fig:delg} shows a graph where $e_1$ and $e_2$ are nodes representing $n$-ary relationships. The reification is given by the use of the edges labelled as \texttt{source node}, \texttt{edge} and \texttt{target node}. 
+
+%\newcommand{\wid}[1]{{\color{gray}~[#1]}} % format Wikidata IDs
+
+\begin{figure}[tb]
+\centering
+{\sf
+\begin{tabular}{l}
+\large\textbf{Michelle Bachelet\wid{Q320}}\\[1ex]
+\large\qquad position held\wid{P39} \quad President of Chile\wid{Q466956}\\
+\qquad \qquad 
+{\begin{tabular}{l@{\qquad~~}l}
+start date \wid{P580} & 2014-03-11\\
+end date \wid{P582} 	& 2018-03-11\\
+replaces\wid{P155}	& Sebastián Piñera\wid{Q306}\\
+replaced by\wid{P156} & Sebastián Piñera\wid{Q306}\\
+\end{tabular}}\\
+\\[-1ex]
+\large\qquad position held\wid{P39} \quad President of Chile\wid{Q466956}\\
+\qquad \qquad {\begin{tabular}{l@{\qquad~~}l}
+start date \wid{P580} & 2006-03-11\\
+end date \wid{P582} & 2010-03-11\\
+replaces\wid{P155} & Ricardo Lagos\wid{Q331}\\
+replaced by\wid{P156} & Sebastián Piñera\wid{Q306}\\
+\end{tabular}}
+\end{tabular}
+}
+\caption{Wikidata statement group for Michelle Bachelet \label{fig:mb}}
+\end{figure}
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=8.5cm]{./images/digraph.png}
+\caption{Directed edge-labelled graph reifying the statements of Figure~\ref{fig:mb} \label{fig:delg}}
+\end{figure}
+
+
+%\begin{figure}[t]
+%\setlength{\vgap}{0.7cm}
+%\setlength{\hgap}{1.4cm}
+%\centering
+%\begin{tikzpicture}
+%\node[iri] (e1) {$e_1$};
+%\node[iri,right=\hgap of e1] (pe1) {P39}
+%  edge[arrin] node[lab] {pred} (e1);
+%\node[iri,above=\vgap of pe1] (se1) {Q320}
+%  edge[arrin,bend right=10] node[lab] {subj} (e1);
+%\node[iri,below=\vgap of pe1] (oe1) {Q466956}
+%  edge[arrin,bend left=10] node[lab] {obj} (e1);
+%\node[iri,above=\vgap of se1] (sp) {Q306}
+%  edge[arrin,bend right=13] node[lab] {P155} (e1)
+%  edge[arrin,bend right=45] node[lab] {P156} (e1);
+%\node[iri,left=1.6\hgap of se1] (sd1) {2014-03-11}
+%  edge[arrin] node[lab] {P580} (e1);
+%\node[iri] (ed1) at (sd1|-oe1) {2018-03-11}
+%. edge[arrin] node[lab] {P582} (e1);
+%\node[iri,right=\hgap of pe1] (e2) {$e_2$}
+%  edge[arrout] node[lab] {pred} (pe1)
+%  edge[arrout,bend right=10] node[lab] {subj} (se1)
+%  edge[arrout,bend left=10] node[lab] {obj} (oe1)
+%  edge[arrout,bend right=45] node[lab] {P156} (sp);
+%\node[iri,right=1.6\hgap of se1] (sd2) {2006-03-11}
+%  edge[arrin] node[lab] {P580} (e2);
+%\node[iri] (ed2) at (sd2|-oe1) {2018-03-11}
+%  edge[arrin] node[lab] {P582} (e2);
+%\node[iri,below=\vgap of e2] (rl) {Q331}
+%  edge[arrin] node[lab] {P155} (e2);
+%\end{tikzpicture}
+%\caption{Directed edge-labelled graph reifying the statements of Figure~\ref{fig:mb} \label{fig:delg}}
+%\end{figure}
+
+Using reification may make the graph model less intuitive, and may be verbose in terms of using several edges to represent one relation. An alternative is to use a model able to represent higher-arity relationships. Among the most popular alternatives are property graphs~\cite{FrancisGGLLMPRS18}, RDF datasets~\cite{CyganiakWL14}, and RDF*~\cite{Hartig17}. 
+%Each of these models has supporting query languages~\cite{FrancisGGLLMPRS18,HarrisS13,Hartig17}.
+
+In property graphs, both nodes and edges can be associated with an id, a label, and one or more key--value pairs called properties. Figure~\ref{fig:pg1} shows a property graph for the statements of the running example.
+Note that the two presidencies of \texttt{Michell Bachellet} are represented by using two different edges, and the specific qualifiers are represented as properties of such edges. 
+Although we are have solved the problem found by using a directed labelled graph (i.e. the use of reification for representing n-ary relations), we can observe that we are not able to associate more information to the properties of nodes and edges (e.g. \texttt{Sebastián Piñera} is a simple value instead of node that can be described). The later implies that the property graph model does not support relationships with multiple levels of descriptions or qualifiers. 
+
+%However, there are some limitations in terms of how property graphs are implemented and how they are queried in systems such as Cypher/Neo4j~\cite{FrancisGGLLMPRS18}. Properties cannot take multiple values (e.g., for multilingual labels), properties are not intended to take edge IDs as values, indexes are not supported for properties on edges, etc. 
+%Aside from the specific implementation of Neo4j, the property graph model is quite verbose, and it is not directly clear how it should be physically represented and indexed.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=8cm]{./images/pg1.png}
+\caption{Property graph for the statements of Figure~\ref{fig:mb}.\label{fig:pg1}}
+\end{figure}
+
+%\begin{figure}[t]
+%\setlength{\vgap}{1.5cm}
+%\setlength{\hgap}{1cm}
+%\centering
+%\begin{tikzpicture}
+  %%%% node n1 
+%  \node[nrect] (n1) {
+%   \alt{
+%       \uri{label} & =\,\uri{Michelle Bachelet@en} } };
+   %%%% label of n1
+%  \node[rt] (ln1) at (n1.north) {\uri{Q5 : Q320}};
+ %%%% node n2
+%  \node[nrect,right=\hgap of n1] (n2) {
+%   \alt{
+%      \uri{label} & =\,\uri{President of Chile@en} } };
+  %%%% label of n2
+%  \node[rt] (ln2) at (n2.north) {\uri{Q294414 : Q466956}};
+  %%%% edge e1
+%  \draw[arrout,pos=0.5,bend left=50] (ln1) to 
+%   node[erect] (e1) {
+%   \alt{ \uri{P580} & =\,\uri{"11 March 2014"}\\
+%         \uri{P582} & =\,\uri{"11 March 2018"}\\
+%         \uri{P155} & =\,\uri{Q306}\\
+%         \uri{P156} & =\,\uri{Q306}\\ } }
+%  (ln2);
+   %%%% label of e1
+%  \node[rte] (le1) at (e1.north) {\uri{P39 $:$ $e_2$}};
+   %%%% edge e1
+%  \draw[arrout,pos=0.5,bend right=65] (n1) to 
+%   node[erect] (e1) {
+%   \alt{ \uri{P580} & =\,\uri{"11 March 2006"}\\
+%         \uri{P582} & =\,\uri{"11 March 2010"}\\
+%         \uri{P155} & =\,\uri{Q331}\\
+%         \uri{P156} & =\,\uri{Q306}\\ } }
+%  (n2);  
+  %%%% label of e1
+%  \node[rte] (le1) at (e1.north) {\uri{P39 $:$ $e_1$}};
+%\end{tikzpicture}
+%\caption{Property graph for the statements of Figure~\ref{fig:mb}; additionally, \urit{Q294414} refers to \textsf{public office} (a type)\label{fig:pg}}
+%\end{figure}
+
+Regarding RDF*~\cite{Hartig17}, the idea is to allow statements about statements, i.e. we can add edges to an edge. We illustrate this idea in Figure~\ref{fig:rdf-star}, where the statement \gedge[arrin][2cm]{Michelle Bachelet}{position held}{President of Chile} has been associated with qualifiers and other meta-data.  While this approach might appear promising at first glance, the two statements of Figure~\ref{fig:mb} cannot be distinguished as the model does not support multiple instances of the same statement; this would then conflate the qualifiers for the two presidencies.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=8cm]{./images/rdf-star.png}
+\caption{RDF* representation of the first statement of Figure~\ref{fig:mb} \label{fig:rdf-star}}
+\end{figure}
+
+%\begin{figure}[tb]
+%\setlength{\vgap}{0.9cm}
+%\setlength{\hgap}{2cm}
+%\centering
+%\begin{tikzpicture}
+%\node[iri,anchor=center,minimum width=4.4cm,minimum height=0.7cm] (e1) {};
+%\node[iri,right=1ex of e1.west,anchor=west] (sp1) {Q320};
+%\node[iri,right=\hgap of sp1] (ch1) {Q466956}
+%  edge[arrin] node[iri,draw=none] {P39} (sp1);
+%\node[iri,right=\hgap of e1] (ttt) {2018-03-11}
+%  edge[arrin] node[lab] {P580} (e1);
+%\node[iri,above=0.5\vgap of ttt] (ttf) {2014-03-11}
+%  edge[arrin] node[lab] {P582} (e1);
+%\node[iri,below=0.5\vgap of ttt] (mb) {Q306}
+%  edge[arrin,bend right=6] node[lab] {P155} (e1)
+%  edge[arrin,bend left=6] node[lab] {P156} (e1);
+%\end{tikzpicture}
+%\caption{RDF* representation of the first statement of Figure~\ref{fig:mb} \label{fig:rdf*}}
+%\end{figure}
+
+
+
+\ma{If we want to distinguish the two statements of Figure~\ref{fig:mb}, couldn't we use two identifiers for the triple? In RDF* this could be written as follows:
+
+\urit{t1} \urit{represents} <<\urit{Q320} \urit{P39} \urit{Q466956}>>
+
+\urit{t2} \urit{represents} <<\urit{Q320} \urit{P39} \urit{Q466956}>>
+
+And then we can use either \urit{t1} or \urit{t2} depending on the triple we are making reference to.
+}
+
+\ah{Yep, but then you are reifying the triple, and reification is precisely what RDF* is trying to avoid. :) Here, \urit{t1} and \urit{t2} represent the statements, which are basically the nodes $e_1$ and $e_2$ of Figure~\ref{fig:delg}. Maybe this could be clarified ...}
+
+% \ma{In Figure \ref{fig:rdf*}, should \urit{Q466956} be replaced by \urit{Q11696}? What does \urit{Q466956} represent?} % ah: Fixed
+
+Finally we have RDF datasets~\cite{CyganiakWL14}, supported in SPARQL as named graphs~\cite{HarrisS13}, where multiple graphs can be defined and managed as a single instance. In this setting we can assign each statement to its own named graph, and then use the graph's name to define meta-data on the statement~\cite{HernandezHK15}. However, this approach has some practical limitations. Foremost of these, the model considers multiple distinct graphs rather than one graph; as a result, for example, path queries in SPARQL cannot be applied over multiple graphs at once, requiring either a default graph to be defined as the union of all graphs, or requiring the graphs on which the path should be applied to be explicitly named in the query.
+
+%Aside from these issues, there are also continued debates about how to handle complex objects in graphs, such as lists, values with precision, dates with calendars, multidimensional values such as geographic points, measures with units, multilingual strings, etc. Wikidata~\cite{VK14:Wikidata} contains a range of these complex objects.
+%\noindent
+
+These models are the most popular for graph databases in practice. Although they have different strengths and weaknesses, they all follow a graph abstraction and are thus interoperable, where one can convert data from one model to the other with relative ease (possibly using reification if moving from higher to lower arity). 
+%We would like to support all such models in MillenniumDB.
+
+%======
+\subsection{Property-Domain Graphs}
+\label{sec-proposal}
+In this section we introduce the notion of property-domain graph, which is the data model used in MillenniumDB.
+The property-domain graph model extends the property graph model by allowing edges between edges, without any kind of restriction. This extension allows a multi-dimensional representation of relationships. 
+
+Assume an infinite set $\labels$ of labels, and a set $\values$ of atomic values  (e.g. integers, strings, floats, dates, etc.). 
+\begin{definition}[Property-domain graph] 
+ A property-domain graph is a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+\item $O$ is a finite set of object identifiers;
+\item $\gamma : O \to O \times O \times O$ is a partial function that associates objects with a tuple of three objects; 
+\item $\lab : O \to \labels$ is a partial function that associates objects with labels; and
+\item $\prop : O \times \labels \to \values$ is a partial function that associates objects with labels and values (i.e. properties).
+\end{itemize}
+\end{definition}
+
+ \begin{figure}[t]
+\centering
+\includegraphics[width=8.5cm]{./images/dgraph.png}
+\caption{Property-domain graph for the statements of Figure~\ref{fig:mb}. \label{fig:dgraph}}
+\end{figure}
+
+The set $O$ is called the \textit{domain}, referring to both the universe of objects, and the domain of the function $\gamma$.
+Each object in $O$ have a single identifier, zero or one label (defined by function $\lab$), and zero or many properties (defined by function $\prop$). In terms of data modeling, an object can represent an entity, a relationship (when it is in the domain of $\gamma$), or both.
+
+An example of property-domain graph is presented in Figure \ref{fig:dgraph}.
+We use different shapes to represent the componentes of an object: the object identifier and the label is inside a rounded square (e.g. $o_1:$ \texttt{Person}); the properties are inside a square (e.g. \texttt{Name = ``Michelle bachelet''}), and the 3-tuple associate to an object is inside a rounded dotted square (e.g. \gedge[arrin][1cm]{$o_1$}{$o_4$}{$o_5$}).
+
+The objects are organized in groups called \emph{representation levels}.
+Level 1 contains objects representing simple entities (e.g. $o_4:$) or complex entities (e.g. $o_1$).
+Level 2 contains objects representing relations among the entities of level 1.
+Level 3 contains objects from the lower leves, and so on.
+ 
+Note that the property-domain graph is compatible with other graph models.
+In fact, we just need a two-level property-domain graph to represent directed labeled graphs, RDF* graphs and named graphs.
+
+%An important property of \datas is that they can be directly represented in the relational model and indexed straightforwardly. A \data can viewed as a single quaternary relation $Q(S,P,O,\underline{E})$, with primary key $E$, such that $\gamma(E)=(S,P,O)$. We will speak in more detail about indexing later in Section~\ref{sec:storage}.
+
+
+
+
+
+
+
+%======
+\subsection{Domain Graphs (OLD, TO BE REMOVED)}
+\label{sec-proposal}
+
+We now define the graph data model used in MillenniumDB in order to generalise the aforementioned models used in practice. Assume a countably infinite set $\objs$ of objects.
+
+\begin{definition}
+A \emph{domain graph} $G = (O,\gamma)$ consists of a finite set of objects $O\subseteq \objs$ and a partial mapping $\gamma : O \rightarrow O \times O \times O$.
+\end{definition}
+
+The set $O$ is called the \textit{domain}, referring to both the universe of objects, and the domain of the function $\gamma$. Objects in $O$ may be either primitive or complex objects. Primitive objects include strings, IRIs, integers, existential variables, non-existential values, etc. Complex objects may include values with datatypes, units, precision, or languages; sets, bags, or ordered tuples/lists of values; items with nested ids, labels, property--value attributes, etc. Complex objects can often be replaced by primitive nodes described in the graph itself (as a classical example, RDF lists provide a mechanism for representing ordered terminated lists within an RDF graph without need for a dedicated list object~\cite{CyganiakWL14}). However, such representations might end up being verbose and inefficient to cope with. On the other hand, each new type of complex object requires higher level tools and languages to have dedicated logic and features to be able to correctly interpret and work with that object. We abstract away such details, assuming that graphs representing such objects can be lifted (to complex objects) and lowered (to a sub-graph of more primitive objects) as needs be. The domain of $\gamma$ can be handled internally by the database or externally by the user/dataset; the image of $\gamma$ (a graph) can also be queried independently of its domain.
+
+The \data itself can be conceptualised in a number of ways. We can think of it as a directed edge-labelled graph (e.g., an RDF graph), where each edge has a unique identifier that makes it an object. Or we may consider it as akin to a directed labelled multigraph (sometimes known as a \emph{labelled quiver}).
+
+An example of a \data representing the two statements of Figure~\ref{fig:mb} is given in Figure~\ref{fig:doma}. Here an object that is also a connection id (aka.\ an edge id) is denoted with lower case $e$. For example $\gamma(e_1) = (\texttt{Q320},\texttt{P39},\texttt{Q466956})$. The object $e_1$ then participates in two other connections $e_3$, and $e_4$. These can again be connected to other objects. Intuitively, in  $\gamma(e_1) = (\texttt{Q320},\texttt{P39},\texttt{Q466956})$, $e_1$ represents a connection between $\texttt{Q320}$ and $\texttt{Q466956}$, and $\texttt{P39}$ is a descriptor, or type/label of this connection. The descriptor itself can then be part of a connection, as is the case with, for instance, $\texttt{P39}$ in Figure~\ref{fig:mb}.
+
+
+%\begin{figure*}[tb]
+%\setlength{\vgap}{1.4cm}
+%\setlength{\hgap}{4cm}
+%\centering
+%\begin{tikzpicture}
+%
+%\node[iri,right=1ex of e1.west,anchor=west] (sp1) {Q320};
+%
+%\node[iri,right=\hgap of sp1] (ch1) {Q466956}
+%  edge[arrin,bend right=10] node[var] (e1) {$e_1$ : P39} (sp1)
+%  edge[arrin,bend left=10] node[var] (e2) {$e_2$ : P39} (sp1);
+%
+%\node[iri,above=\vgap of e1,xshift=2cm] (tt1) {\dtt{2018-03-11}{xsd:date}}
+%  edge[arrin] node[var] (e3) {$e_4$ : P582} (e1);
+%  
+%\node[iri,above=\vgap of e1,xshift=-2cm] (tt2) {\dtt{2014-03-11}{xsd:date}}
+%  edge[arrin] node[var] (e4) {$e_3$ : P580} (e1);
+%  
+%\node[iri,right=\hgap of ch1] (sp) {Q306}
+%  edge[arrin,bend right=10] node[var] (e5) {$e_6$ : P155} (e1)
+%  edge[arrin,bend right=24] node[var] (e6) {$e_5$ : P156} (e1)
+%  edge[arrin,bend left=10] node[var] (e7) {$e_7$ : P155} (e2);
+%
+%\node[iri,below=\vgap of sp] (rl) {Q331}
+%  edge[arrin,bend left=8] node[var] (e8) {$e_8$ : P156} (e2);
+%
+%\node[iri,below=\vgap of e2,xshift=2cm] (tt1) {\dtt{2010-03-11}{xsd:date}}
+%  edge[arrin] node[var] (e9) {$e_9$ : P582} (e2);
+%  
+%\node[iri,below=\vgap of e2,xshift=-2cm] (tt2) {\dtt{2006-03-11}{xsd:date}}
+%  edge[arrin] node[var] (e10) {$e_{10}$ : P580} (e2); 
+%\end{tikzpicture}
+%
+%\caption{Domain graph representation of the two statements of Figure~\ref{fig:mb} \label{fig:doma}}
+%\end{figure*}
+
+%Per Figure~\ref{fig:mb}, we claim that \data allows for modelling Wikidata almost immediately; in fact, the \data model is even more expressive as it allows to have quantifiers on quantifiers on quantifiers, etc. 
+
+An important property of \datas is that they can be directly represented in the relational model and indexed straightforwardly. A \data can viewed as a single quaternary relation $Q(S,P,O,\underline{E})$, with primary key $E$, such that $\gamma(E)=(S,P,O)$. We will speak in more detail about indexing later in Section~\ref{sec:storage}.
+
+\Datas also have the advantage of being compatible with other proposed models. For instance, they can model RDF graphs immediately: the range of $\gamma$ is a directed-edge labelled graph. 
+
+Similarly, RDF* graphs are also representable as a \data by either allowing RDF triples as complex objects, or by lowering, e.g., $((s,p,o),p',o')$ to $\gamma(e_1) = (s,p,o)$, $\gamma(e_2) = (e_1,p',o')$.
+
+Likewise although RDF datasets are more general than \data, being representable as a relation $D(S,P,O,G)$ without $G$ being a primary key (here assuming a fixed IRI for the default graph), we can represent $(s,p,o,g)$ as $\gamma(e_1) = (s,p,o)$, $\gamma(e_2) = (e_1,\texttt{graph},g)$.
+
+Additionally, if one allows complex objects in $O$ with labels and properties, they can also simulate property graphs in a direct way. More precisely, assuming a set $\labels$ of labels, a set $\keys$ of keys/attributes, and a set $\values$ of atomic values  (e.g. ints, strings, floats, dates, etc.), we define property-\datas as follows:
+
+\begin{definition}[Property-\data] 
+%Let $L$ be a set of labels, $K$ a set of keys/attributes, and $V$ a set of atomic values (e.g. ints, strings, floats, dates, etc.).
+ A property-\data is a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+    \item $(O,\gamma)$ is a \data;
+    \item $\lab : O \mapsto 2^\labels$ is the labelling function assigning a finite set of labels to each object; and
+    \item $\prop : O \times \keys \mapsto \values$ is a partial function.
+\end{itemize}
+\end{definition}
+
+Each (multi-valued) property graph $G = (V,E,\rho,\lambda,\sigma)$, as defined in \cite{AnglesABHRV17}, is immediately modelled as a property-\data $G' = (O,\gamma,\lab,\prop)$, where $O = V\cup E$,  $\gamma(o) = (o_1,\varepsilon,o_2)$ whenever $\rho(o) = (o_1,o_2)$, $\lab(o) = \lambda(o)$, and $\prop(o,k)=\sigma(o,k)$. The intermediate node $\varepsilon$ is not used and can be removed for indexing; alternatively, if edges are restricted to have precisely one label (per Cypher/Neo4j~\cite{FrancisGGLLMPRS18}), then we can define $\varepsilon = \lab(o)$ and use $\lab$ for node labels only (now with $O = V\cup E \cup L$). To query on label and property data, auxiliary indexes would be required for $\lab$ and $\prop$. As an alternative to adding auxiliary indexes, the property-\data can be lowered to remove $\texttt{lab}$ and $\texttt{prop}$ on complex objects, representing $\lab(o) = \{ l_1,\ldots,l_m \}$ as $\gamma(e_{l1}) = (o,\texttt{lab},l_1), \ldots, \gamma(e_{lm}) = (o,\texttt{lab},l_m)$, and representing $\prop(o,k) = \{ v_1,\ldots,v_n \}$ as $\gamma(e_{p1}) = (o,k,v_1), \ldots, \gamma(e_{ln}) = (o,k,v_n)$ (now with $O = V\cup E \cup L \cup K \cup V$).
+
+
+%======
+\subsection{Analysis of data models}
+\label{sec-models}
+
+\subsubsection{Data model 1}.
+
+Assume an infinite set $\objs$ of object identifiers, an infinite set $\labels$ of labels, and a set $\values$ of atomic values  (e.g. integers, strings, floats, dates, etc.). 
+A property-domain graph is a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+\item $O \subset \objs$ is a finite set of object identifiers;
+\item $\gamma : O \to O \times O \times O$ is a partial function that associates objects with a tuple of three objects; 
+\item $\lab : O \to \labels$ is a partial function that associates objects with labels; and
+\item $\prop : O \times \labels \to \values$ is a partial function that associates objects with labels and values (i.e. properties).
+\end{itemize}
+
+\begin{itemize}
+\item It is a merge of the hypegraph data model (where edges can connect more than two nodes) and the hypernode data model (where a node can be a graph).
+\item The function $\gamma$ is not compatible with the traditional notion of  (property) graph where an edge connects a pair of nodes.
+\item The transversal use of labels for objects and properties simplify its definition and understanding.
+\end{itemize}
+
+
+\subsubsection{Data model 2}.
+
+\newcommand{\type}{\operatorname{type}}
+
+Assume an infinite set $\objs$ of object identifiers, an infinite set $\labels$ of labels,  a set $\keys$ of keys/attributes, and a set $\values$ of atomic values  (e.g. integers, strings, floats, dates, etc.). 
+A property-domain graph is a tuple $G=(O,\gamma,\type,\prop)$, where:
+\begin{itemize}
+\item $O \subset \objs$ is a finite set of object identifiers;
+\item $\gamma : O \to O \times O$ is a partial function; 
+\item $\type$ is a subset of $O \times O$; 
+\item $\prop : O \times \keys \to \values$ is a partial function.
+\end{itemize}
+
+Notes:
+\begin{itemize}
+\item The difference with Data Model 1 is the definition of the $\gamma$ function.
+\item It is compatible with traditional (property) graphs as an edge is a pair of nodes.
+\item Function $\type$ is a little confusing. It implies that any object can be a node, an edge, or a type. 
+\item The representation power could be higher than Data Model 1.  
+\end{itemize}
+
+\subsubsection{Data model 3}.
+
+Assume an infinite set $\objs$ of object identifiers, an infinite set $\labels$ of labels, and a set $\values$ of atomic values  (e.g. integers, strings, floats, dates, etc.). 
+A property-domain graph is a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+\item $O \subset \objs$ is a finite set of object identifiers;
+\item $\gamma : O \to O \times O$ is a partial function; 
+\item $\lab : O \to \labels$ is a partial function that associates objects with labels; and
+\item $\prop : O \times \labels \to \values$ is a partial function that associates objects with labels and values (i.e. properties).
+\end{itemize}
+
+Notes:
+\begin{itemize}
+\item The difference with Data Model 1 is the definition of the $\gamma$ function.
+\item It is compatible with traditional (property) graphs as an edge is a pair of nodes.
+\item The transversal use of labels for objects and properties simplify its definition and understanding.
+\item It seems to have the same representation power than Data Model 1.  
+\end{itemize}
+
+
+%======
+\subsection{Query language for Data Model 3}
+\label{sec-op1}
+
+\smallskip
+\noindent
+\textbf{Data model}
+
+Assume an infinite set $\objs$ of object identifiers, an infinite set $\labels$ of labels, and a set $\values$ of atomic values  (e.g. integers, strings, floats, dates, etc.). 
+ A property-domain graph is a tuple $G=(O,\gamma,\lab,\prop)$, where:
+\begin{itemize}
+\item $O \subset \objs$ is a finite set of object identifiers;
+\item $\gamma : O \to O \times O$ is a partial function (used to define edges); 
+\item $\lab : O \to \labels$ is a partial function that associates objects with labels; and
+\item $\prop : O \times \labels \to \values$ is a partial function that associates objects with labels and values (i.e. properties).
+\end{itemize}
+
+The set $O$ is called the \textit{domain}, referring to both the universe of objects, and the domain of the function $\gamma$.
+Each object in $O$ have a single identifier, zero or one label (defined by function $\lab$), and zero or many properties (defined by function $\prop$). In terms of data modeling, an object can represent an entity, a relationship (when it is in the domain of $\gamma$), or both.
+
+\smallskip
+\noindent
+\textbf{Query language syntax}.
+
+Assume a countably infinite set $\vars$ of variables disjoint with the set of objects $\objs$.
+
+An \textit{path expression} \texttt{p} is defined recursively as as follows:
+\begin{itemize}
+\item if $a \in labels$ then $a$ is a simple path expression, and $\hat{ }a$ is an inverse path expression;
+\item if $p_1$ and $p_2$ are path expressions then
+ \begin{itemize}
+  \item $p_1 \slash p_2$ is a sequence path expression;
+  \item $p_1 + p_2$ is an alternative path expression;
+  \item $p_1^*$ is a zero-or-more path expression;
+  \item $e?$ is a zero-or-one path expression; 
+ \end{itemize}
+\end{itemize}
+
+Let $t_1, t_2, t_3 \in \objs \cup \vars$ and $p$ be a path expression.
+A \emph{graph pattern} is defined recursively as follows:
+A tuple $(t_1,t_2,t_3)$ is a graph pattern called \emph{simple pattern};
+A tuple $(t_1, p, t_2)$ is a graph pattern called \emph{path pattern}; 
+If $P_1$ and $P_2$ are graph patterns then $(P_1 \AAND P_2)$ and $(P_1 \OPT P_2)$ are complex graph patterns.
+
+A \emph{selection condition} is defined recursively as follows:
+(a) If $?X,?Y \in \vars$, $p,q \in \labels$ and $a \in \values$ then $({?X} = {?Y})$, ${label(?X)} = {p}$, ${label(?X)} = {label(?Y)}$, ${?X.p} = {?Y.q}$, ${?X.p} = {a}$ are atomic selection conditions;
+(b) If $C_1, C_2$ are selection conditions then $(C_1 \land C_2)$, $(C_1 \lor C_2)$ and $(\neg C_1)$ are complex selection conditions.
+
+Let $?X \in \vars$, $p \in \labels$ and $q \in \labels$.
+A \emph{projection function} is any of the following expressions: $?X \AS p$, $o.p \AS  q$, $label(?X) \AS q$.  
+A \emph{projection clause} is a set of projection functions. 
+
+A \emph{query} is a tuple $(S,P,C)$ where $S$ is a projection function, $P$ is a graph pattern, and $C$ is a selection condition. 
+ 
+\smallskip 
+\noindent
+\textbf{Query language semantics}
+
+
+A \textit{solution mapping} (or simply \textit{mapping}) is a partial function $\map: \vars \rightarrow \objs$. 
+The \emph{domain} of a mapping $\map$, denoted $\Dom{\map}$, is the set of variables on which $\map$ is defined.
+Given $?X \in \vars$ and $o \in \objs$, we use $\mu(?X) = o$ to denote that $\mu$ maps variable $?X$ to object $o$.  
+Additionally, we will assume that $\mu(o)=o$, for all $o\in \objs$. 
+%Given a finite set of variables $W$, the restriction of a mapping $\mu$ to $W$, denoted $\mu_{|W}$, is a mapping $\mu'$ which satisfies that $\dom(\mu') = W \cap \dom(\mu)$ and $\mu'(?X) = \mu(?X)$ when $?X \in \dom(\mu')$.
+
+Two mappings $\mu_1, \mu_2$ are \emph{compatible}, denoted $\mu_1 \sim \mu_2$, when for all $?X \in \dom(\mu_1) \cap \dom(\mu_2)$ it satisfies that $\mu_1(?X)=\mu_2(?X)$. 
+Note that two mappings with disjoint domains are always compatible.
+The union of compatible mappings, denoted $\mu_1 \cup \mu_2$, is also a mapping. 
+
+Let $\Omega_1$ and $\Omega_2$ be sets of mappings.
+The operations of join, union, difference and left outer-join between $\Omega_1$ and $\Omega_2$ are defined as follows:
+\begin{verse}
+$\Omega_1 \Join \Omega_2  = \{ \mu_1 \cup \mu_2 \mid \mu_1 \in \Omega_1 ~\land~ \mu_2 \in \Omega_2 ~\land~ \mu_1 \sim \mu_2 \}$
+
+$\Omega_1 \cup \Omega_2  = \{ \mu \mid \mu_1 \in \Omega_1 ~\lor~ \mu_2 \in \Omega_2 \}$
+
+$\Omega_1 \setminus \Omega_2  = \{ \mu _1 \in \Omega_1 \mid \forall \mu_2 \in \Omega_2, \text{ is false that } \mu_1 \sim \mu_2  \}$
+
+$\Omega_1 \LOJ \Omega_2  = (\Omega_1 \Join \Omega_2) \cup (\Omega_1 \setminus \Omega_2) \}$
+\end{verse}
+
+The semantics of selection conditions is defined as follows. 
+Given a selection condition $C$, a mapping $\mu$, and a graph $G=(O,\gamma,\lab,\prop)$, we say that $\mu$ satisfies $C$ under $G$, denoted by $\mu \models_G C$, if.  
+\begin{itemize}
+\item 
+$C$ is ${?X} = {?Y}$, $?X \in \dom(\mu)$, $?Y \in \dom(\mu)$, $\mu(?X) \in O$, $\mu(?Y) \in O$, and $\mu(?X) = \mu(?Y)$;
+\item 
+$C$ is ${label(?X)} = {p}$, $?X \in \dom(\mu)$, $\mu(?X) \in O$, and $\lab(?X) = p$; 
+\item 
+$C$ is ${label(?X)} = {label(?Y)}$, $?X \in \dom(\mu)$, $?Y \in \dom(\mu)$, $\mu(?X) \in O$, $\mu(?Y) \in O$, and $\lab(?X) = \lab(?Y)$; 
+\item 
+$C$ is ${?X.p} = {?Y.q}$, $?X \in \dom(\mu)$, $?Y \in \dom(\mu)$, $\mu(?X) \in O$, $\mu(?Y) \in O$ and $\prop(\mu(?X),p) = \prop(\mu(?Y),q)$;
+\item 
+$C$ is ${?X.p} = {a}$, $?X \in \dom(\mu)$, $\mu(?X) \in O$ and $\prop(\mu(?X),p) = a$;
+\item
+$C$ is $(C_1 \land C_2)$, $C_1$ and $C_2$ are selection conditions, $\mu \models_G C_1$ and $\mu \models_G C_2$; 
+\item
+$C$ is $(C_1 \lor C_2)$, $C_1$ and $C_2$ are selection conditions, $\mu \models_G C_1$ or $\mu \models_G C_2$; 
+\item
+$C$ is $(\neg C_1)$, $C_1$ is a selection condition, and it is not the case that $\mu \models_G C_1$. 
+\end{itemize}
+
+The evaluation of a graph pattern $P$ over a property domain graph $G=(O,\gamma,\lab,\prop)$, is defined as a function $\semp{P}{G}$ which returns a set of solution mappings. 
+If $P$ is a simple pattern $(t_1, t_2, t_3)$ then 
+\begin{verse}
+$\semp{P}{G} = \{ \mu \mid \dom(\mu) = var(P) ~\land~ \gamma(\mu(t_2)) = (\mu(t_1), \mu(t_3)) \}$  
+\end{verse}
+where $var(P)$ is the set of variables occurring in $P$.
+The semantics of complex graph patterns is defined as follows:
+\begin{verse}
+$\semp{(P_1 \AAND P_2)}{G} = \semp{P_1}{G} \Join \semp{P_2}{G}$
+
+$\semp{(P_1 \OPT P_2)}{G} = \semp{P_1}{G} \LOJ \semp{P_2}{G}$
+\end{verse}
+
+Given a domain graph $G=(O,\gamma,\lab,\prop)$, a path in $G$ is a sequence $ S = [o_1, \dots, o_n] $ where $o_1, \dots, o_n \in \objs$, and satisfying that for each pair $(o_i, o_{i+1})$ with $1 \leq i < n$, it applies that $\gamma(o_i) = (a,b)$ and $\gamma(o_{i+1})=(b,c)$. The length of $S$, denoted as $length(S)$, is $n$. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
